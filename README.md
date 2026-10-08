@@ -6,10 +6,6 @@ A simple and clean notes app built with **React** as part of the **Syntecxhub We
 
 ![Notes App](./screenshot.png)
 
-## Live Demo
-
-[View the app](YOUR_LIVE_LINK_HERE)
-
 ## Features
 
 - Add, edit and delete notes
@@ -39,7 +35,7 @@ A simple and clean notes app built with **React** as part of the **Syntecxhub We
 ## Run Locally
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Syntecxhub_Notes_App.git
+git clone https://github.com/sumlamusthafa/Syntecxhub_Notes_App.git
 cd Syntecxhub_Notes_App
 npm install
 npm run dev

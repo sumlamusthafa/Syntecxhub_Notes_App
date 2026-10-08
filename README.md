@@ -6,6 +6,10 @@ A simple and clean notes app built with **React** as part of the **Syntecxhub We
 
 ![Notes App](./screenshot.png)
 
+## Live Demo
+
+[View the app](https://syntecxhub-notes-app-six.vercel.app)
+
 ## Features
 
 - Add, edit and delete notes

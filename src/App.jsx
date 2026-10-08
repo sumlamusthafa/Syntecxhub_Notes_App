@@ -1,17 +1,33 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { TAGS, DEFAULT_TAG } from "./constants";
+import Sidebar from "./components/Sidebar";
+import NoteForm from "./components/NoteForm";
+import NoteCard from "./components/NoteCard";
 import "./App.css";
 
-// Read saved notes from localStorage (runs once on first load)
+// Makes old notes (from the first version) work with the new format
+function normalize(n) {
+  return {
+    id: n.id,
+    title: n.title ?? "",
+    body: n.body ?? n.text ?? "",
+    tag: n.tag ?? DEFAULT_TAG,
+    pinned: Boolean(n.pinned),
+    trashed: Boolean(n.trashed),
+    createdAt: n.createdAt ?? n.id,
+    updatedAt: n.updatedAt ?? n.createdAt ?? n.id,
+  };
+}
+
 function loadNotes() {
   try {
-    const saved = localStorage.getItem("notes");
-    return saved ? JSON.parse(saved) : [];
+    const raw = localStorage.getItem("notes-v2") ?? localStorage.getItem("notes");
+    return raw ? JSON.parse(raw).map(normalize) : [];
   } catch {
     return [];
   }
 }
 
-// Read saved theme (light or dark)
 function loadTheme() {
   try {
     return localStorage.getItem("theme") || "light";
@@ -20,138 +36,200 @@ function loadTheme() {
   }
 }
 
-// Show the note's created time in a friendly format
-function formatDate(timestamp) {
-  return new Date(timestamp).toLocaleString([], {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
+const VIEW_TITLES = { all: "All notes", pinned: "Pinned", trash: "Trash" };
 
 export default function App() {
   const [notes, setNotes] = useState(loadNotes);
-  const [text, setText] = useState("");
-  const [editingId, setEditingId] = useState(null);
-  const [query, setQuery] = useState("");        // search text
-  const [theme, setTheme] = useState(loadTheme); // light or dark
-  const inputRef = useRef(null);
+  const [theme, setTheme] = useState(loadTheme);
+  const [view, setView] = useState("all"); // all | pinned | trash
+  const [tagFilter, setTagFilter] = useState(null);
+  const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState(null);
 
   // Save notes whenever they change
   useEffect(() => {
-    localStorage.setItem("notes", JSON.stringify(notes));
+    localStorage.setItem("notes-v2", JSON.stringify(notes));
   }, [notes]);
 
-  // Apply and save the theme whenever it changes
+  // Apply and save the theme
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // Focus the input when the page loads
-  useEffect(() => {
-    inputRef.current.focus();
+  // ---- Handlers (useCallback keeps them stable, so memo cards don't re-render) ----
+  const saveNote = useCallback((data) => {
+    const now = Date.now();
+    setNotes((prev) =>
+      data.id
+        ? prev.map((n) =>
+            n.id === data.id
+              ? { ...n, title: data.title, body: data.body, tag: data.tag, updatedAt: now }
+              : n
+          )
+        : [
+            {
+              id: now,
+              title: data.title,
+              body: data.body,
+              tag: data.tag,
+              pinned: false,
+              trashed: false,
+              createdAt: now,
+              updatedAt: now,
+            },
+            ...prev,
+          ]
+    );
+    setEditing(null);
   }, []);
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    const value = text.trim();
-    if (!value) return;
+  const togglePin = useCallback((id) => {
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n)));
+  }, []);
 
-    if (editingId) {
-      setNotes(notes.map((n) => (n.id === editingId ? { ...n, text: value } : n)));
-      setEditingId(null);
-    } else {
-      // id is also the created time
-      setNotes([{ id: Date.now(), text: value }, ...notes]);
-    }
-    setText("");
-    inputRef.current.focus();
-  }
+  const moveToTrash = useCallback((id) => {
+    setNotes((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, trashed: true, pinned: false } : n))
+    );
+    setEditing((cur) => (cur?.id === id ? null : cur));
+  }, []);
 
-  function startEdit(note) {
-    setEditingId(note.id);
-    setText(note.text);
-    inputRef.current.focus();
-  }
+  const restoreNote = useCallback((id) => {
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, trashed: false } : n)));
+  }, []);
 
-  function deleteNote(id) {
-    // Ask before deleting
-    if (!window.confirm("Delete this note?")) return;
+  const deleteForever = useCallback((id) => {
+    if (!window.confirm("Delete this note forever? This can't be undone.")) return;
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+  }, []);
 
-    setNotes(notes.filter((n) => n.id !== id));
-    if (editingId === id) {
-      setEditingId(null);
-      setText("");
-    }
-  }
+  const emptyTrash = useCallback(() => {
+    if (!window.confirm("Delete everything in Trash forever?")) return;
+    setNotes((prev) => prev.filter((n) => !n.trashed));
+  }, []);
 
-  // Notes that match the search box
-  const visibleNotes = notes.filter((n) =>
-    n.text.toLowerCase().includes(query.trim().toLowerCase())
-  );
+  const startEdit = useCallback((note) => {
+    setEditing(note);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const cancelEdit = useCallback(() => setEditing(null), []);
+
+  const selectView = useCallback((v) => {
+    setView(v);
+    setTagFilter(null);
+    setEditing(null);
+  }, []);
+
+  const selectTag = useCallback((id) => {
+    setTagFilter((cur) => (cur === id ? null : id));
+    setView((v) => (v === "trash" ? "all" : v));
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((t) => (t === "light" ? "dark" : "light"));
+  }, []);
+
+  // ---- Derived data (useMemo: only recalculated when its inputs change) ----
+  const counts = useMemo(() => {
+    const active = notes.filter((n) => !n.trashed);
+    return {
+      all: active.length,
+      pinned: active.filter((n) => n.pinned).length,
+      trash: notes.length - active.length,
+      byTag: Object.fromEntries(
+        TAGS.map((t) => [t.id, active.filter((n) => n.tag === t.id).length])
+      ),
+    };
+  }, [notes]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return notes
+      .filter((n) => (view === "trash" ? n.trashed : !n.trashed))
+      .filter((n) => view !== "pinned" || n.pinned)
+      .filter((n) => !tagFilter || n.tag === tagFilter)
+      .filter(
+        (n) => !q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q)
+      )
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt);
+  }, [notes, view, tagFilter, query]);
+
+  const activeTag = TAGS.find((t) => t.id === tagFilter);
+  const heading = activeTag ? activeTag.label : VIEW_TITLES[view];
+
+  let emptyText = "No notes yet. Add your first note above.";
+  if (query.trim()) emptyText = `No notes match "${query.trim()}".`;
+  else if (view === "trash") emptyText = "Trash is empty.";
+  else if (view === "pinned") emptyText = "No pinned notes. Pin a note to keep it at the top.";
+  else if (tagFilter) emptyText = `No notes tagged ${activeTag.label} yet.`;
 
   return (
-    <main className="app">
-      <header className="top">
-        <h1>My Notes</h1>
-        <button
-          type="button"
-          className="ghost"
-          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-        >
-          {theme === "light" ? "Dark mode" : "Light mode"}
-        </button>
-      </header>
+    <div className="shell">
+      <Sidebar
+        view={view}
+        onSelectView={selectView}
+        tagFilter={tagFilter}
+        onSelectTag={selectTag}
+        counts={counts}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
 
-      <form onSubmit={handleSubmit} className="note-form">
-        <input
-          ref={inputRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Write a note..."
-        />
-        <button type="submit">{editingId ? "Save" : "Add"}</button>
-      </form>
+      <main className="main">
+        <header className="main-head">
+          <div>
+            <h1>{heading}</h1>
+            <p className="sub">
+              {visible.length} {visible.length === 1 ? "note" : "notes"}
+            </p>
+          </div>
 
-      {notes.length > 0 && (
-        <div className="toolbar">
-          <input
-            className="search"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search notes..."
-            aria-label="Search notes"
+          <div className="head-actions">
+            {view === "trash" && counts.trash > 0 && (
+              <button type="button" className="btn btn-ghost danger" onClick={emptyTrash}>
+                Empty trash
+              </button>
+            )}
+            <input
+              className="search"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search notes"
+              aria-label="Search notes"
+            />
+          </div>
+        </header>
+
+        {view !== "trash" && (
+          <NoteForm
+            key={editing ? editing.id : "new"}
+            editing={editing}
+            onSave={saveNote}
+            onCancel={cancelEdit}
           />
-          <p className="count">
-            {visibleNotes.length} of {notes.length}{" "}
-            {notes.length === 1 ? "note" : "notes"}
-          </p>
-        </div>
-      )}
+        )}
 
-      {notes.length === 0 ? (
-        <p className="empty">No notes yet. Write your first one above.</p>
-      ) : visibleNotes.length === 0 ? (
-        <p className="empty">No notes match "{query}".</p>
-      ) : (
-        <ul className="note-list">
-          {visibleNotes.map((note) => (
-            <li key={note.id}>
-              <div className="note-body">
-                <span>{note.text}</span>
-                <small className="date">{formatDate(note.id)}</small>
-              </div>
-              <div className="actions">
-                <button onClick={() => startEdit(note)}>Edit</button>
-                <button className="danger" onClick={() => deleteNote(note.id)}>
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+        {visible.length === 0 ? (
+          <p className="empty">{emptyText}</p>
+        ) : (
+          <section className="grid" aria-label="Notes">
+            {visible.map((note) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                onEdit={startEdit}
+                onPin={togglePin}
+                onTrash={moveToTrash}
+                onRestore={restoreNote}
+                onDeleteForever={deleteForever}
+              />
+            ))}
+          </section>
+        )}
+      </main>
+    </div>
   );
 }

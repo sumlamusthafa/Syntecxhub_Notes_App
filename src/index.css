@@ -1,12 +1,59 @@
-body {
-  margin: 0;
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
+:root {
+  color-scheme: light;
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --ink: #141a2a;
+  --muted: #5d667c;
+  --line: #e3e7ef;
+  --accent: #3b5bdb;
+  --accent-ink: #ffffff;
+  --danger: #c92a2a;
+  --focus: #7c93ff;
+  --radius: 12px;
 }
 
-#root {
-  border: none;
-  width: auto;
-  max-width: none;
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1220;
+  --surface: #181c2e;
+  --ink: #eceffa;
+  --muted: #98a1bd;
+  --line: #2a3050;
+  --accent: #7c93ff;
+  --accent-ink: #0f1220;
+  --danger: #ff8787;
+  --focus: #a5b4ff;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
   margin: 0;
-  padding: 0;
-  text-align: left;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }

@@ -1,0 +1,164 @@
+:root {
+  --bg: #f3f1fb;
+  --card: #ffffff;
+  --ink: #1f1b3a;
+  --muted: #6b6690;
+  --accent: #4b3fd1;
+  --danger: #c0392b;
+  --line: #ddd8f3;
+}
+
+/* Dark mode colours */
+:root[data-theme="dark"] {
+  --bg: #15132b;
+  --card: #1f1c3d;
+  --ink: #ece9ff;
+  --muted: #a39fc9;
+  --accent: #7468f0;
+  --danger: #d9534f;
+  --line: #34305c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+h1 {
+  margin: 0;
+  color: var(--ink);
+}
+
+.note-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+input {
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 1rem;
+  background: var(--card);
+  color: var(--ink);
+}
+
+.note-form input { flex: 1; }
+
+button {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0.45rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+button.danger { background: var(--danger); }
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #9d95f0;
+  outline-offset: 2px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.search {
+  flex: 1;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.9rem;
+}
+
+.count {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.note-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.note-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.note-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.note-body span { overflow-wrap: anywhere; }
+
+.date {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.actions button {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.empty { color: var(--muted); }
+
+@media (max-width: 420px) {
+  .note-list li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
